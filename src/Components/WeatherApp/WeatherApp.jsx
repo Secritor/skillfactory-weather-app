@@ -1,4 +1,4 @@
-import {Component} from 'react';
+import {useEffect, useState, useCallback} from 'react';
 
 import "./WeatherApp.css";
 
@@ -15,26 +15,25 @@ import OneDayView from '../OneDayView/OneDayView';
 import FiveDaysView from '../FiveDaysView/FiveDays';
 
 
-class WeatherApp extends Component {
-    state = {
+const WeatherApp = () => {
+  const [data, setData] = useState({
       wicon: clear_icon,
       city: "Moscow",
       temp: "12°C",
       humidity: "0%",
       windSpeed: "0 km/h",
       iconId: null,
-      latitude: null,
-      longitude: null,
+      latitude: 52.123431234,
+      longitude: 54.12345885,
       weatherCategory: true,
       weatherList : [],
-      
-      
-    }
+  });
+
     
 
-    api_key = '3ebf25ecb2b9c7060185d3004a74c1e5';
+    const api_key = '3ebf25ecb2b9c7060185d3004a74c1e5';
 
-    _transformData = (data) => {
+    const _transformData = (data) => {
       return {
         dt: data.dt,
         dt_txt: data.dt_txt,
@@ -46,178 +45,170 @@ class WeatherApp extends Component {
     }
 
     // запрос на сервере
-    getResponce = async (url) => {
+    const getResponce = async (url) => {
       let responce = await fetch(url);
       let data = await responce.json();
       return data;
     }
 
-    getForecastWeather = () => {
-    fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${this.state.city}&units=metric&lang=ru&appid=${this.api_key}`)
-    .then(response => response.json())
-    .then(data => {
-      const transformedData = data.list.map(item => this._transformData(item));
-      this.setState({ weatherList: transformedData });
-    })
-    .catch(error => {
-      console.error('Error:', error);
-    });
+    const getRequest = (url) => {
+      let res = getResponce(url);
+      updateWeatherState(res);
+      getWeatherIcon(data.iconId);
+      // getForecastWeather();
     }
 
+    const getForecastWeather = useCallback(async () => {
+      await fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${data.city}&units=metric&lang=ru&appid=${api_key}`)
+      .then(response => response.json())
+      .then(data => {
+        const transformedData = data.list.map(item => _transformData(item));
+        setData({weatherList: transformedData });
+      })
+      .catch(error => {
+        console.error('Error:', error);
+      });
+    }, [data.city]);
+
     // функция обновления большей части state 
-    updateWeatherState = (data) => {
-      this.setState((prevState) => ({
+    const updateWeatherState = (data) => {
+      setData((prevState) => ({
         city: data.name, 
-        temp: data && data.main.temp ? `${Math.floor(data.main.temp)}°C` : 'no data',
-        humidity: `${Math.floor(data.main.humidity)}%`,
-        windSpeed: `${Math.floor(data.wind.speed)} km/h`,
-        iconId: data.weather[0].icon,
+        temp: data && data.main && data.main.temp ? `${Math.floor(data.main.temp)}°C` : 'no temp',
+        humidity: data.main && data.main.humidity ? `${Math.floor(data.main.humidity)}%` : 'no hum',
+        windSpeed: data.wind && data.wind.speed ? `${Math.floor(data.wind.speed)} km/h` : 'no speed',
+        iconId: data.weather && data.weather[0].icon ? data.weather[0].icon : '01d',
       }));
     }
 
     // функция обновления одного состояние wicon(иконки погоды), вынес с отдельную фукнцию т.к много кода
-    getWeatherIcon = (iconId) => {
-      let wicon;
+    const getWeatherIcon = (iconId) => {
+      let currWicon;
       if (iconId === '01d' || iconId === '01n') {
-        wicon = clear_icon;
+        currWicon = clear_icon;
       } else if (iconId === '02d' || iconId === '02n') {
-        wicon = cloud_icon;
+        currWicon = cloud_icon;
       } else if (iconId === '03d' || iconId === '03n') {
-        wicon = drizzle_icon;
+        currWicon = drizzle_icon;
       } else if (iconId === '04d' || iconId === '04n') {
-        wicon = drizzle_icon;
+        currWicon = drizzle_icon;
       } else if (iconId === '09d' || iconId === '09n') {
-        wicon = rain_icon;
+        currWicon = rain_icon;
       } else if (iconId === '10d' || iconId === '10n') {
-        wicon = rain_icon;
+        currWicon = rain_icon;
       } else if (iconId === '13d' || iconId === '13n') {
-        wicon = snow_icon;
+        currWicon = snow_icon;
       } else {
-        wicon = clear_icon;
+        currWicon = clear_icon;
       }
-      this.setState({ wicon: wicon });
+      setData({ wicon: currWicon });
     }
 
     
-    
+ 
     // вызываю функции обновления state когда получаю данные (компонент меняется)
-    async componentDidUpdate(prevProps, prevState) {
-      const {city, longitude, latitude} = this.state;
-      if (city !== prevState.city) {
-        const data = await this.getResponce(`https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&lang=ru&appid=${this.api_key}`);
-        this.updateWeatherState(data);
-        this.getWeatherIcon(this.state.iconId)
-        this.getForecastWeather();
-        this.setState( {longitude: prevState = null, latitude: prevState = null} );
-      }
+    // useEffect ((prevProps, prevState) => {
+      
+      
+    //     // const res = getResponce(`https://api.openweathermap.org/data/2.5/weather?q=${data.city}&units=metric&lang=ru&appid=${api_key}`);
+    //     // updateWeatherState(res);
+    //     // getWeatherIcon(data.iconId);
+    //     // // getForecastWeather();
+    //     getRequest(`https://api.openweathermap.org/data/2.5/weather?q=${data.city}&units=metric&lang=ru&appid=${api_key}`);
+    //     setData({ longitude: null, latitude: null });
+      
+    // }, [data.city])
 
-      if ((longitude !== null) || (latitude !== null)) {
-        const data = await this.getResponce(`https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&lang=ru&appid=${this.api_key}`);
-        this.updateWeatherState(data);
-        this.getWeatherIcon(this.state.iconId)
-        this.getForecastWeather();
+    // useEffect((prevState) => {
+    //   if (data.longitude && data.latitude) {
+    //     const res = getResponce(`https://api.openweathermap.org/data/2.5/weather?lat=${data.latitude}&lon=${data.longitude}&units=metric&lang=ru&appid=${api_key}`);
+    //     updateWeatherState(res);
+    //     getWeatherIcon(data.iconId);
+    //     getForecastWeather();
+    //   }
         
-      }
+    // }, [data.longitude, data.latitude, getForecastWeather , data.iconId])
 
-    
-    }
-    
-    
    // меняю данные по запросу геолокации
-    getLocation = (geolocation) => {
-        this.setState(() => ({
+    const getLocation = (geolocation) => {
+        setData(() => ({
           latitude: geolocation && geolocation.latitude ? geolocation.latitude : null,
           longitude: geolocation && geolocation.longitude ? geolocation.longitude : null,
         }))
+        console.log('click')
     }
 
   // меняю данные по данным инпута
-    getCity = (currentCity) => {
-      this.setState(() => ({
+    const getCity = (currentCity) => {
+      setData(() => ({
           city: currentCity,
       }))
     }
 
-    getLocations = (geolocation, currentCity ) => {
-      if (currentCity) {
-        this.setState(() => ({
-          city: currentCity
-        }))
-      }
-
-      if (geolocation) {
-        this.setState(() => ({
-          latitude: geolocation && geolocation.latitude ? geolocation.latitude : null,
-          longitude: geolocation && geolocation.longitude ? geolocation.longitude : null,
-        }))
-      }
-    }
-
-  
-
-
-
     // переключатели режимов вывода погоды с одного дня по 5 дней. т.к режимов всего два решил сделать переключение через логический тип true/false 
-    OneDayViewMode = () => {
-      this.setState({
+    const OneDayViewMode = () => {
+      setData({
         weatherCategory: true
       });
     }
     
-    FiveDayViewMode = () => {
-      this.setState({
+    const FiveDayViewMode = () => {
+      setData({
         weatherCategory: false
       });
     }
-
- 
-
-   
-
-    render() {
-
-    const {city, wicon, temp, humidity, windSpeed, weatherList} = this.state
-    const oneDay = <OneDayView
-    city={city}
-    icon={wicon}
-    temp={temp}
-    humidity={humidity}
-    windSpeed={windSpeed}
-    />
-    const fiveDay = <FiveDaysView
-    city={city}
-    icon={wicon}
-    temp={temp}
-    humidity={humidity}
-    windSpeed={windSpeed}
-    weatherList={weatherList}
-    getWeatherIcon={this.getWeatherIcon}
-    />
+    const {city, wicon, temp, humidity, windSpeed, weatherList, weatherCategory} = data
+      const oneDayModule = <OneDayView
+      city={data.city}
+      icon={data.wicon}
+      temp={data.temp}
+      humidity={data.humidity}
+      windSpeed={data.windSpeed}
+      />
+      const fiveDayModule = <FiveDaysView
+      city={data.city}
+      icon={data.wicon}
+      temp={data.temp}
+      humidity={data.humidity}
+      windSpeed={data.windSpeed}
+      weatherList={data.weatherList}
+      getWeatherIcon={getWeatherIcon}
+      />
       return (
+
         <div className="container">
           <TopBar
-            getLocation={this.getLocation}
-            getCity={this.getCity}
+            getLocation={getLocation}
+            getCity={getCity}
           />
           {/* переключатель режимов показа погоды */}
-          <div className='select-mode'>
+          {/* <div className='select-mode'>
             <div
-            className={this.state.weatherCategory ? 'selected-item one-day-mode active' : 'selected-item one-day-mode'}
-            onClick={this.OneDayViewMode}
+            className={data.weatherCategory ? 'selected-item one-day-mode active' : 'selected-item one-day-mode'}
+            onClick={OneDayViewMode}
             >
               <p>weather now</p>
             </div>
             <div 
-            className={this.state.weatherCategory ? 'selected-item five-days-mode' : 'selected-item five-days-mode active'}
-            onClick={this.FiveDayViewMode}
+            className={data.weatherCategory ? 'selected-item five-days-mode' : 'selected-item five-days-mode active'}
+            onClick={FiveDayViewMode}
             >
                 <p>weather for the next 5 days</p>
             </div>
-          </div>
-          {this.state.weatherCategory ? oneDay : fiveDay} 
+          </div> */}
+
+          <OneDayView
+          city={data.city}
+          icon={data.wicon}
+          temp={data.temp}
+          humidity={data.humidity}
+          windSpeed={data.windSpeed}
+          />
+        
+          {/* {data.weatherCategory ? oneDayModule : fiveDayModule}  */}
         </div>
       )
-    }
+    
   }
   
 

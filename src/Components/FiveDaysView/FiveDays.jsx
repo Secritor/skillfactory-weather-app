@@ -13,10 +13,12 @@ import snow_icon from '../Assets/snow.png'
 
 const FiveDaysView = ({city, weatherList}) => {
   const chunkedWeatherList = [];
-  
-  for (let i = 0; i < weatherList.length; i += 8) {
-    chunkedWeatherList.push(weatherList.slice(i, i + 8));
-  } 
+  if(weatherList.length && weatherList.length > 0) {
+    for (let i = 0; i < weatherList.length; i += 8) {
+      chunkedWeatherList.push(weatherList.slice(i, i + 8));
+    } 
+  }
+ 
 
   const getWeatherIcon = (iconId) => {
     let wicon;
